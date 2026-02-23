@@ -1,0 +1,26 @@
+function startDetection() {
+    document.getElementById("video").src = "/video_feed";
+}
+
+function fetchAlerts() {
+    fetch("/alerts")
+        .then(response => response.json())
+        .then(data => {
+            const alertBox = document.getElementById("alerts");
+            alertBox.innerHTML = "";
+
+            data.forEach(alert => {
+                const div = document.createElement("div");
+                div.className = "alert-card";
+                div.innerText = alert;
+
+                // Voice alert
+                const speech = new SpeechSynthesisUtterance(alert);
+                speechSynthesis.speak(speech);
+
+                alertBox.appendChild(div);
+            });
+        });
+}
+
+setInterval(fetchAlerts, 3000);

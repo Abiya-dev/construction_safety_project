@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Construction Safety Monitor</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #111;
+            color: white;
+            display: flex;
+        }
+
+        .video-section {
+            flex: 3;
+            padding: 20px;
+        }
+
+        .sidebar {
+            flex: 1;
+            background: #1e1e1e;
+            padding: 20px;
+            border-left: 3px solid #ff3b3b;
+        }
+
+        h2 {
+            color: #ff3b3b;
+        }
+
+        .log-item {
+            background: #2a2a2a;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 5px solid red;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px;
+            background: red;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        input {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="video-section">
+    <h2>Live Monitoring</h2>
+
+    <form id="uploadForm">
+        <input type="file" name="video" required>
+        <button type="submit">Upload & Start</button>
+    </form>
+
+    <br>
+
+    <!-- IMPORTANT: NO src initially -->
+    <img id="videoStream" width="100%">
+</div>
+
+<div class="sidebar">
+    <h2>🚨 Detected Violations</h2>
+    <div id="violationList"></div>
+</div>
+
+<script>
+
+document.getElementById("uploadForm").onsubmit = async function(e) {
+    e.preventDefault();
+
+    let formData = new FormData(this);
+
+    let response = await fetch("/upload", {
+        method: "POST",
+        body: formData
+    });
+
+    let result = await response.json();
+
+    if (result.status === "success") {
+        document.getElementById("videoStream").src = "/video_feed";
+        alert("Detection Started");
+    }
+};
+
+async function fetchViolations() {
+    let response = await fetch("/violations");
+    let data = await response.json();
+
+    let list = document.getElementById("violationList");
+    list.innerHTML = "";
+
+    data.forEach(item => {
+        let div = document.createElement("div");
+        div.className = "log-item";
+        div.innerText = item;
+        list.appendChild(div);
+    });
+}
+
+setInterval(fetchViolations, 2000);
+
+</script>
+
+</body>
+</html>
