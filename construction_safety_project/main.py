@@ -1,136 +1,66 @@
-from flask import Flask, render_template, Response, request, jsonify
-import cv2
 import os
+import glob
+from flask import Flask, render_template, Response, request, redirect, url_for, send_from_directory
 from ultralytics import YOLO
-from datetime import datetime
-from alerts.telegram_alert import send_telegram_alert
+from utils.frame_extractor import generate_frames, get_global_status
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "uploads"
+# --- ABSOLUTE PATH SETUP ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
+REPORT_FOLDER = os.path.join(BASE_DIR, 'static', 'reports')
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['REPORT_FOLDER'] = REPORT_FOLDER
+
+# Ensure folders exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(REPORT_FOLDER, exist_ok=True)
 
-model = YOLO("models/yolo/best.pt")
+# Load Models
+model_main = YOLO('models/yolo/best.pt')
+model_gloves = YOLO('models/yolo/gloves.pt')
 
-video_path = None
-sent_violations = set()
-violation_log = []
-
-
-@app.route("/")
+@app.route('/')
 def index():
-    return render_template("index.html")
+    # Fetch all PDF reports (Changed from CSV to PDF)
+    report_files = glob.glob(os.path.join(app.config['REPORT_FOLDER'], '*.pdf'))
+    # Sort by newest first
+    report_files.sort(key=os.path.getmtime, reverse=True)
+    report_names = [os.path.basename(f) for f in report_files]
+    
+    print(f"DEBUG: Found {len(report_names)} PDF reports in {app.config['REPORT_FOLDER']}")
+    
+    video_path = request.args.get('video_path')
+    return render_template('index.html', reports=report_names, video_path=video_path)
 
+@app.route('/upload', methods=['POST'])
+def upload_video():
+    if 'video' not in request.files:
+        return redirect(url_for('index'))
+    file = request.files['video']
+    if file.filename == '':
+        return redirect(url_for('index'))
+    if file:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(filepath)
+        return redirect(url_for('index', video_path=file.filename))
 
-@app.route("/upload", methods=["POST"])
-def upload():
-    global video_path, sent_violations, violation_log
-
-    sent_violations.clear()
-    violation_log.clear()
-
-    if "video" not in request.files:
-        return jsonify({"status": "error"})
-
-    file = request.files["video"]
-
-    if file.filename == "":
-        return jsonify({"status": "error"})
-
-    video_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(video_path)
-
-    return jsonify({"status": "success"})
-
-
-@app.route("/violations")
-def get_violations():
-    return jsonify(violation_log)
-
-
-def generate_frames():
-    global video_path, sent_violations, violation_log
-
-    if video_path is None:
-        return
-
-    cap = cv2.VideoCapture(video_path)
-
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        results = model(frame)
-
-        persons = 0
-        helmets = 0
-        gloves = 0
-        vests = 0
-
-        for r in results:
-            for box in r.boxes:
-                cls = int(box.cls[0])
-                label = model.names[cls].lower()
-
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(frame, label, (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.6, (0, 255, 0), 2)
-
-                if label == "person":
-                    persons += 1
-                if label == "helmet":
-                    helmets += 1
-                if label == "gloves":
-                    gloves += 1
-                if label == "vest":
-                    vests += 1
-
-        # Worker condition
-        if persons > 0 and vests > 0:
-
-            if helmets == 0 and "Helmet Missing" not in sent_violations:
-                send_violation("Helmet Missing")
-
-            if gloves == 0 and "Gloves Missing" not in sent_violations:
-                send_violation("Gloves Missing")
-
-        _, buffer = cv2.imencode(".jpg", frame)
-        frame = buffer.tobytes()
-
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-    cap.release()
-
-
-def send_violation(name):
-    global sent_violations, violation_log
-
-    timestamp = datetime.now().strftime("%H:%M:%S")
-
-    message = (
-        f"🚨 PPE VIOLATION DETECTED 🚨\n\n"
-        f"Violation: {name}\n"
-        f"Zone: Red Zone\n"
-        f"Location: Construction Site\n"
-        f"Time: {timestamp}"
-    )
-
-    send_telegram_alert(message)
-
-    sent_violations.add(name)
-    violation_log.append(f"[{timestamp}] {name}")
-
-
-@app.route("/video_feed")
-def video_feed():
-    return Response(generate_frames(),
+@app.route('/video_feed/<filename>')
+def video_feed(filename):
+    video_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    return Response(generate_frames(model_main, model_gloves, video_path),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/status')
+def status():
+    return get_global_status()
 
-if __name__== "__main__":
-    app.run(debug=True)
+@app.route('/download_report/<filename>')
+def download_report(filename):
+    # Sends the PDF as a downloadable attachment
+    return send_from_directory(app.config['REPORT_FOLDER'], filename, as_attachment=True)
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
