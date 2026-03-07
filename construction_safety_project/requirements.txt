@@ -3,4 +3,5 @@ ultralytics
 requests
 opencv-python
 torch
+reportlab
 
