@@ -1,0 +1,16 @@
+SAFETY AUDIT REPORT
+Video Source:,mini.mp4
+Generated:,2026-03-07 12:48:34
+
+Time,Violation Type,Zone Color,Safety Effect/Risk
+12:45:17,Helmet Missing,RED,High risk of traumatic brain injury from falling objects or debris.
+12:45:17,Boots Missing,BLUE,Increased risk of puncture wounds or crushed feet from heavy materials.
+12:45:20,Gloves Missing,YELLOW,"Vulnerability to chemical burns, abrasions, and hand injuries."
+12:46:19,Helmet Missing,RED,High risk of traumatic brain injury from falling objects or debris.
+12:46:19,Boots Missing,BLUE,Increased risk of puncture wounds or crushed feet from heavy materials.
+12:46:35,Gloves Missing,YELLOW,"Vulnerability to chemical burns, abrasions, and hand injuries."
+12:46:42,Vest Missing,ORANGE,"Reduced visibility to machinery operators, leading to potential collisions."
+12:47:22,Helmet Missing,RED,High risk of traumatic brain injury from falling objects or debris.
+12:47:22,Boots Missing,BLUE,Increased risk of puncture wounds or crushed feet from heavy materials.
+12:47:58,Gloves Missing,YELLOW,"Vulnerability to chemical burns, abrasions, and hand injuries."
+12:48:32,Helmet Missing,RED,High risk of traumatic brain injury from falling objects or debris.
