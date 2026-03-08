@@ -2,8 +2,8 @@ import requests
 
 def send_telegram_alert(message):
     # --- ENTER YOUR CREDENTIALS ---
-    apiToken = "8290100783:AAEkOZ-gW-M_4cIhEptqCw9_KgAnjcSVHkk"
-    chatID = "6463023700"
+    apiToken = "API_TOKEN"
+    chatID = "CHAT_ID"
     # ------------------------------
     
     apiURL = f'https://api.telegram.org/bot{apiToken}/sendMessage'
